@@ -1,0 +1,73 @@
+const fs = require('fs');
+const path = './database/redeemcode.json';
+const { tambahSaldo } = require('./library/cekdatasaldo');
+
+// Cek apakah file database sudah ada
+if (!fs.existsSync(path)) fs.writeFileSync(path, JSON.stringify([]));
+
+// Load data dari file
+function loadCodes() {
+    return JSON.parse(fs.readFileSync(path));
+}
+
+// Simpan data ke file
+function saveCodes(data) {
+    fs.writeFileSync(path, JSON.stringify(data, null, 2));
+}
+
+// Tambah kode baru
+function addCode(code, saldo, expireTime) {
+    const data = loadCodes();
+    if (data.find(x => x.code === code)) return false;
+    data.push({
+        code,
+        saldo,
+        claimed: false,
+        expired: expireTime // format timestamp (ms)
+    });
+    saveCodes(data);
+    return true;
+}
+
+// Hapus kode
+function delCode(code) {
+    let data = loadCodes();
+    const before = data.length;
+    data = data.filter(x => x.code !== code);
+    saveCodes(data);
+    return before !== data.length;
+}
+
+// Daftar semua kode
+function listCode() {
+    const data = loadCodes();
+    return data;
+}
+
+// Klaim kode
+function claimCode(code, user) {
+    const data = loadCodes();
+    const idx = data.findIndex(x => x.code === code);
+    if (idx === -1) return { success: false, message: 'Kode tidak ditemukan' };
+
+    const kode = data[idx];
+
+    if (kode.claimed) return { success: false, message: 'Kode sudah diklaim' };
+    if (Date.now() > kode.expired) return { success: false, message: 'Kode telah kedaluwarsa' };
+
+    // Tandai sebagai diklaim
+    data[idx].claimed = true;
+    saveCodes(data);
+
+    // Tambah saldo
+    tambahSaldo(user, kode.saldo);
+
+    return { success: true, message: `Berhasil klaim saldo Rp${kode.saldo}` };
+}
+
+module.exports = {
+    addCode,
+    delCode,
+    listCode,
+    claimCode
+};

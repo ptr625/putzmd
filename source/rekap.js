@@ -1,0 +1,67 @@
+const axios = require("axios");
+const fs = require("fs");
+
+const saldoPath = "./source/saldo.json";
+
+async function cekSaldoOrkut() {
+    try {
+        const url = `https://h2h.okeconnect.com/trx/balance?memberID=${global.merchantIdOrderKuota}&pin=${global.pinOrkut}&password=${global.pwOrkut}`;
+        const response = await axios.get(url);
+        return response.data.balance || 0;
+    } catch (error) {
+        console.error("❌ Gagal mengambil saldo Orkut:", error);
+        return 0;
+    }
+}
+
+async function cekSaldoSMM() {
+    try {
+        const response = await axios.post("https://smmnusantara.id/api/balance", {
+            key: global.smmApiKey
+        });
+        return response.data.balance || 0;
+    } catch (error) {
+        console.error("❌ Gagal mengambil saldo SMM:", error);
+        return 0;
+    }
+}
+
+function getTopSaldo() {
+    try {
+        const data = JSON.parse(fs.readFileSync(saldoPath));
+        return data.topSaldo || 0;
+    } catch (error) {
+        console.error("❌ Gagal membaca saldo.json:", error);
+        return 0;
+    }
+}
+
+async function rekapTotalPendapatan() {
+    const saldoOrkut = await cekSaldoOrkut();
+    const saldoSMM = await cekSaldoSMM();
+    const topSaldo = getTopSaldo();
+
+    const transaksi = readTransactions();
+    const totalTransaksi = transaksi.length;
+    const totalUangMasuk = transaksi.reduce((sum, trx) => sum + (trx.amount || 0), 0);
+    
+    const uangKotor = saldoOrkut + saldoSMM + totalUangMasuk + topSaldo;
+    const uangBersih = uangKotor - saldoSMM - topSaldo;
+
+    return `📊 *Laporan Rekapitulasi Pendapatan*\n
+📌 *Total Transaksi:* ${totalTransaksi} transaksi
+💰 *Total Pendapatan:* Rp${totalUangMasuk.toLocaleString()}
+🟠 *Top Saldo:* Rp${topSaldo.toLocaleString()}
+
+🟢 *Saldo Saat Ini:*
+   ◽ Orkut: Rp${saldoOrkut.toLocaleString()}
+   ◽ SMM: Rp${saldoSMM.toLocaleString()}
+
+📈 *Rekap Keuangan:*
+   💵 *Uang Kotor:* Rp${uangKotor.toLocaleString()}
+   ✅ *Uang Bersih:* Rp${uangBersih.toLocaleString()}
+   
+📎 _Laporan ini mencerminkan total pemasukan & saldo yang tersedia._`;
+}
+
+module.exports = { rekapTotalPendapatan };

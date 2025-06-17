@@ -1,0 +1,10 @@
+[
+    {
+        "id": "TX123456",
+        "user": "6281234567890@s.whatsapp.net",
+        "amount": 50000,
+        "method": "Orkut",
+        "status": "success",
+        "date": "2025-03-10T12:00:00Z"
+    }
+]

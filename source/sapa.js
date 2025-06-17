@@ -1,0 +1,68 @@
+const fs = require('fs');
+const moment = require('moment-timezone');
+
+const jadwal = {
+    0: { open: '07:00', close: '22:00', dayName: 'Minggu 🌞' },
+    1: { open: '14:00', close: '21:00', dayName: 'Senin 🌙' },
+    2: { open: '14:00', close: '21:00', dayName: 'Selasa 🌙' },
+    3: { open: '14:00', close: '21:00', dayName: 'Rabu 🌙' },
+    4: { open: '14:00', close: '21:00', dayName: 'Kamis 🌙' },
+    5: { open: '14:00', close: '21:00', dayName: 'Jumat 🌙' },
+    6: { open: '07:00', close: '22:00', dayName: 'Sabtu 🌞' }
+};
+
+module.exports = async (client) => {
+    const now = moment().tz('Asia/Jakarta');
+    const day = now.day();
+    const currentTime = now.format('HH:mm');
+    const { open, close, dayName } = jadwal[day];
+
+    if (currentTime >= open && currentTime <= close) return;
+
+    const statusToko = `🔴 TUTUP | Buka besok ${dayName} ${open}-${close} WIB ❎`;
+    const bannerImage = 'https://img12.pixhost.to/images/1297/581857224_yilzishop.jpg';
+
+    const messageText = `
+╔════════════════════════════╗
+        🤖 *BOTSHOP V5* 🤖
+╚════════════════════════════╝
+
+📢 *Status Layanan:*
+${statusToko}
+
+🕒 *Jadwal Operasional:*
+• Weekdays: 14.00 - 21.00 WIB
+• Weekend : 07.00 - 22.00 WIB
+
+❌ Saat ini *toko sedang tutup*.
+⏳ Silakan kembali saat jam operasional.
+
+👤Aktifkan Services Ai : .chatbot on
+
+📦 Pesanan & layanan akan otomatis diproses saat toko buka kembali.
+
+Terima kasih telah menggunakan *BOTSHOP V5* — solusi instan untuk kebutuhan bot dan layanan digital Anda!
+`;
+
+    const filePath = './library/database/json/respon.json';
+    if (!fs.existsSync(filePath)) return;
+
+    const data = JSON.parse(fs.readFileSync(filePath));
+    const nowTime = Date.now();
+    const cooldown = 6 * 60 * 60 * 1000;
+
+    for (const number in data) {
+        const lastSent = data[number]?.time || 0;
+        if (nowTime - lastSent < cooldown) continue;
+
+        try {
+            await client.sendFile(number, bannerImage, 'botshop.jpg', messageText);
+            data[number].time = nowTime;
+            console.log(`✅ Pesan terkirim ke ${number}`);
+        } catch (err) {
+            console.log(`❌ Gagal kirim ke ${number}:`, err.message);
+        }
+    }
+
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+};
